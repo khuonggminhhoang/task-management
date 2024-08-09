@@ -58,7 +58,37 @@ module.exports.detail = async (req, res) => {
         res.json(task);
     }
     catch (err) {
-        res.json({ code: 404 });
+        res.json({
+            code: 400,
+            message: 'Bad Request'
+        });
+    }
+
+}
+
+// [PATCH] /api/v1/tasks/change-status/:id
+module.exports.changeStatus = async (req, res) => {
+    const taskId = req.params.id;
+    const status = req.body.status;
+    
+    try {
+        await Task.updateOne({
+            _id: taskId
+        }, {
+            status: status
+        })
+
+        res.json({
+            code: 200,
+            message: 'OK'
+        })
+    }
+    catch (err) {
+        res.json({
+            code: 400,
+            message: 'Bad Request'
+        });
+
     }
 
 }
