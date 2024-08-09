@@ -1,4 +1,8 @@
 module.exports = (query, objectPagination, countPage) => {
+    if(query.limit) {
+        objectPagination.limit = parseInt(query.limit);
+    }
+
     objectPagination.total = Math.ceil(countPage/objectPagination.limit);
 
     if(query.page) {
