@@ -92,3 +92,47 @@ module.exports.changeStatus = async (req, res) => {
     }
 
 }
+
+// [PATCH] /api/v1/tasks/change-multi
+module.exports.changeMulti = async (req, res) => {
+    const ids = req.body.ids;
+    const key = req.body.key;
+    const value = req.body.value;
+    
+    try {
+        switch(key) {
+            case 'status': 
+                await Task.updateMany({
+                    _id: {$in: ids}
+                }, {
+                    status: value
+                });
+                break;
+
+            case 'deleted':
+                await Task.updateMany({
+                    _id: {$in : ids}
+                }, {
+                    deleted: value
+                });
+                break;
+            
+            default:
+                break;
+        }
+
+        res.json({
+            code: 200,
+            message: 'OK',
+        })
+
+    }
+    catch(err) {
+        res.json({
+            code: 400,
+            message: 'Bad Request'
+        })
+    }
+
+    
+}
