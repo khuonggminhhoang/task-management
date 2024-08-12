@@ -113,7 +113,7 @@ module.exports.changeMulti = async (req, res) => {
                 await Task.updateMany({
                     _id: {$in : ids}
                 }, {
-                    deleted: value,
+                    deleted: true,
                     deletedAt: new Date()
                 });
                 break;
@@ -166,13 +166,34 @@ module.exports.edit = async (req, res) => {
         res.json({
             code: 200,
             message: "OK",
-        })
+        });
 
     }
     catch(err) {
         res.json({
             code: 400,
             message: 'Bad Request'
-        })
+        });
+    }
+}
+
+// [DELETE] /api/v1/tasks/delete/:id
+module.exports.delete = async (req, res) => {
+    const id = req.params.id;
+    try {
+        await Task.updateOne({_id: id}, {
+            deleted: true
+        });
+
+        res.json({
+            code: 200,
+            message: "OK",
+        });
+    }
+    catch(err) {
+        res.json({
+            code: 400,
+            message: 'Bad Request'
+        });
     }
 }
