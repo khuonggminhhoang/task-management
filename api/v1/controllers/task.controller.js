@@ -138,7 +138,6 @@ module.exports.changeMulti = async (req, res) => {
     
 }
 
-
 // [POST] /api/v1/tasks/create
 module.exports.create = async (req, res) => {
     try {
@@ -148,7 +147,27 @@ module.exports.create = async (req, res) => {
             code: 200,
             message: "OK",
             data: task
+        });
+    }
+    catch(err) {
+        res.json({
+            code: 400,
+            message: 'Bad Request'
+        });
+    }
+}
+
+// [PATCH] /api/v1/tasks/edit/:id
+module.exports.edit = async (req, res) => {
+    const id = req.params.id;
+    try {
+        await Task.updateOne({_id: id}, req.body);
+
+        res.json({
+            code: 200,
+            message: "OK",
         })
+
     }
     catch(err) {
         res.json({
