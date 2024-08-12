@@ -113,7 +113,8 @@ module.exports.changeMulti = async (req, res) => {
                 await Task.updateMany({
                     _id: {$in : ids}
                 }, {
-                    deleted: value
+                    deleted: value,
+                    deletedAt: new Date()
                 });
                 break;
             
@@ -135,4 +136,24 @@ module.exports.changeMulti = async (req, res) => {
     }
 
     
+}
+
+
+// [POST] /api/v1/tasks/create
+module.exports.create = async (req, res) => {
+    try {
+        const task = new Task(req.body);
+        await task.save();
+        res.json({
+            code: 200,
+            message: "OK",
+            data: task
+        })
+    }
+    catch(err) {
+        res.json({
+            code: 400,
+            message: 'Bad Request'
+        })
+    }
 }
