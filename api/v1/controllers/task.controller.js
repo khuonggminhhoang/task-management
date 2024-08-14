@@ -1,4 +1,5 @@
 const Task = require('./../models/task.model');
+const User = require('./../models/user.model');
 
 const paginationHelper = require('./../../../helpers/pagination.helper');
 const searchHelper = require('./../../../helpers/search.helper');
