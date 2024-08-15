@@ -2,18 +2,20 @@ const express = require('express');
 const router = express.Router();
 const controller = require('./../controllers/task.controller'); 
 
-router.get('/', controller.index);
+const middlewareAuth = require('./../../../middleware/auth.middleware');
 
-router.get('/detail/:id', controller.detail);
+router.get('/', middlewareAuth.verifyToken ,controller.index);
 
-router.patch('/change-status/:id', controller.changeStatus);
+router.get('/detail/:id', middlewareAuth.verifyToken,controller.detail);
 
-router.patch('/change-multi', controller.changeMulti);
+router.patch('/change-status/:id', middlewareAuth.verifyToken, controller.changeStatus);
 
-router.post('/create', controller.create);
+router.patch('/change-multi', middlewareAuth.verifyToken, controller.changeMulti);
 
-router.patch('/edit/:id', controller.edit);
+router.post('/create', middlewareAuth.verifyToken, controller.create);
 
-router.delete('/delete/:id', controller.delete);
+router.patch('/edit/:id', middlewareAuth.verifyToken, controller.edit);
+
+router.delete('/delete/:id', middlewareAuth.verifyToken, controller.delete);
 
 module.exports = router;
