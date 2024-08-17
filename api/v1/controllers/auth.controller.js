@@ -117,7 +117,7 @@ module.exports.forgotPassword = async (req, res) => {
         return;
     }
 
-    const secret = process.env.SECRET_KEY;
+    const secret = process.env.SECRET_KEY + email;
     totp.options = { digits: 8, step: 60 };
     const otp = totp.generate(secret);
 
@@ -137,7 +137,6 @@ module.exports.forgotPassword = async (req, res) => {
         code: 200,
         message: "OK",
         email: email,
-        otp: otp,
     });
 }
 
@@ -145,12 +144,13 @@ module.exports.forgotPassword = async (req, res) => {
 module.exports.otpPassword = (req, res) => {
     const otp = req.body.otp;
     const email = req.body.email;
-    const verify  = totp.verify({token: otp, secret: process.env.SECRET_KEY});
+    const verify  = totp.verify({token: otp, secret: process.env.SECRET_KEY + email});
     if(verify) {
         res.json({
             code: 200,
             message: "OK",
-            email: email
+            email: email,
+            isOtpVerified: true
         });
         return;
     }
@@ -163,33 +163,50 @@ module.exports.otpPassword = (req, res) => {
 
 // [POST] /api/v1/auth/password/reset
 module.exports.resetPassword = async (req, res) => {
-    const email = req.body.email;
-    const password = req.body.password;
+    try {
+        const email = req.body.email;
+        const password = req.body.password;
+        
+        const user = await User.findOne({email: email, deleted: false});
 
-    const user = await User.findOne({email: email, deleted: false});
-    if(!user) {
+        const isOtpVerified = req.headers.isotpverified;
+        if(!isOtpVerified) {
+            res.json({
+                code: 401,
+                message: "Unauthorized action"
+            });
+            return;
+        }
+
+        if(!user) {
+            res.json({
+                code: 404,
+                message: "User not found"
+            });
+            return;
+        }
+        
+        const check = await bcrypt.compare(password, user.password);
+        if(check) {
+            res.json({
+                code: 400,
+                message: "New password cannot be the same as the current password"
+            });
+            return;
+        }
+        
+        user.password = await bcrypt.hash(password, 10);
+        await user.save();
         res.json({
-            code: 404,
-            message: "User not found"
+            code: 200,
+            message: "OK"
         });
-        return;
     }
-
-    const check = await bcrypt.compare(password, user.password);
-    if(check) {
+    catch(err) {
         res.json({
-            code: 400,
-            message: "New password cannot be the same as the current password"
+            code: 500,
+            message: "Internal Server Error"
         });
-        return;
-    }
-
-    user.password = await bcrypt.hash(password, 10);
-    user.save();
-    res.json({
-        code: 200,
-        message: "OK"
-    });
-
+    }   
 }
 
