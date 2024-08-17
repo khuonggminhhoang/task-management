@@ -1,14 +1,16 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const { totp } = require('otplib');
 
 const User = require('./../models/user.model');
 
 const tokenHelper = require('./../../../helpers/token.helper');
+const sendMailHelper = require('./../../../helpers/sendMail.helper');
 
 // [POST] /api/v1/auth/register
 module.exports.register = async (req, res) => {
-    const existEmail = await User.findOne({email: req.body.email, deleted: false});
-    if(existEmail) {
+    const existEmail = await User.findOne({ email: req.body.email, deleted: false });
+    if (existEmail) {
         res.json({
             code: 409,
             message: 'Email existed'
@@ -21,7 +23,7 @@ module.exports.register = async (req, res) => {
 
     const salt = await bcrypt.genSalt(saltRounds);
     const hashPassword = await bcrypt.hash(plainTextPassword, salt);
-    
+
     const obj = {
         fullName: req.body.fullName,
         email: req.body.email,
@@ -40,8 +42,8 @@ module.exports.register = async (req, res) => {
 // [POST] /api/v1/auth/login
 module.exports.login = async (req, res) => {
     const email = req.body.email;
-    const user = await User.findOne({email: email, deleted: false});
-    if(!user) {
+    const user = await User.findOne({ email: email, deleted: false });
+    if (!user) {
         res.json({
             code: 400,
             message: "Email is not valid"
@@ -50,7 +52,7 @@ module.exports.login = async (req, res) => {
     }
 
     const check = await bcrypt.compare(req.body.password, user.password);
-    if(!check) {
+    if (!check) {
         res.json({
             code: 400,
             message: "Error Password"
@@ -58,17 +60,17 @@ module.exports.login = async (req, res) => {
         return;
     }
 
-    const {password, ...other} = user._doc;
+    const { password, ...other } = user._doc;
 
     const accessToken = tokenHelper({
         id: user.id,
         email: user.email
-    }, process.env.KEY_ACCESS_TOKEN, ' 30s');
+    }, process.env.KEY_ACCESS_TOKEN, 60 * 15);
 
     const refreshToken = tokenHelper({
         id: user.id,
         email: user.email
-    }, process.env.KEY_REFRESH_TOKEN, '20s');
+    }, process.env.KEY_REFRESH_TOKEN, '7d');
 
     res.json({
         code: 200,
@@ -83,7 +85,7 @@ module.exports.login = async (req, res) => {
 module.exports.refreshTokenRequired = (req, res) => {
     const refreshToken = req.headers.refresh_token;
     jwt.verify(refreshToken, process.env.KEY_REFRESH_TOKEN, (err, decoded) => {
-        if(err) {
+        if (err) {
             res.json({
                 code: 401,
                 message: "Unauthorized"
@@ -93,8 +95,8 @@ module.exports.refreshTokenRequired = (req, res) => {
         const accessToken = tokenHelper({
             id: decoded.id,
             email: decoded.email
-        }, process.env.KEY_REFRESH_TOKEN, '30s');      // 30s hết hạn
-        
+        }, process.env.KEY_ACCESS_TOKEN, 60 * 15);      // 30s hết hạn
+
         res.json({
             code: 200,
             message: "OK",
@@ -102,3 +104,92 @@ module.exports.refreshTokenRequired = (req, res) => {
         });
     });
 }
+
+// [POST] /api/v1/auth/password/forgot
+module.exports.forgotPassword = async (req, res) => {
+    const email = req.body.email;
+    const existed = await User.findOne({ email: email });
+    if (!existed) {
+        res.json({
+            code: 400,
+            message: "Email is not existed"
+        });
+        return;
+    }
+
+    const secret = process.env.SECRET_KEY;
+    totp.options = { digits: 8, step: 60 };
+    const otp = totp.generate(secret);
+
+    const toEmail = email;
+    const subject = '[TASK] OTP đổi mật khẩu'
+    const html = `
+                Mã OTP của bạn: 
+                <b>${otp}</b>. 
+                <br>
+                Lưu ý: OTP chỉ có hiệu lực trong 60s
+                <hr>
+                FACEBOOK: <a href='https://www.facebook.com/khuongminhminh.hoang/'> [ADMIN_TASK]
+        `
+    sendMailHelper.sendMail(toEmail, subject, html);
+
+    res.json({
+        code: 200,
+        message: "OK",
+        email: email,
+        otp: otp,
+    });
+}
+
+// [POST] /api/v1/auth/password/otp
+module.exports.otpPassword = (req, res) => {
+    const otp = req.body.otp;
+    const email = req.body.email;
+    const verify  = totp.verify({token: otp, secret: process.env.SECRET_KEY});
+    if(verify) {
+        res.json({
+            code: 200,
+            message: "OK",
+            email: email
+        });
+        return;
+    }
+
+    res.json({
+        code: 401,
+        message: "Unauthorized"
+    });
+}
+
+// [POST] /api/v1/auth/password/reset
+module.exports.resetPassword = async (req, res) => {
+    const email = req.body.email;
+    const password = req.body.password;
+
+    const user = await User.findOne({email: email, deleted: false});
+    if(!user) {
+        res.json({
+            code: 404,
+            message: "User not found"
+        });
+        return;
+    }
+
+    const check = await bcrypt.compare(password, user.password);
+    if(check) {
+        res.json({
+            code: 400,
+            message: "New password cannot be the same as the current password"
+        });
+        return;
+    }
+
+    user.password = await bcrypt.hash(password, 10);
+    user.save();
+    res.json({
+        code: 200,
+        message: "OK"
+    });
+
+}
+
