@@ -7,7 +7,8 @@ const searchHelper = require('./../../../helpers/search.helper');
 // [GET] /api/v1/tasks
 module.exports.index = async (req, res) => {
     const objectFilter = {
-        deleted: false
+        deleted: false,
+        createdBy: req.user.id
     } 
 
     if(req.query.status) {
@@ -53,7 +54,8 @@ module.exports.detail = async (req, res) => {
     try {
         const task = await Task.findOne({
             _id: taskId,
-            deleted: false
+            deleted: false,
+            createdBy: req.user.id
         });
 
         res.json(task);
@@ -74,7 +76,8 @@ module.exports.changeStatus = async (req, res) => {
     
     try {
         await Task.updateOne({
-            _id: taskId
+            _id: taskId,
+            createdBy: req.user.id
         }, {
             status: status
         })
@@ -104,7 +107,8 @@ module.exports.changeMulti = async (req, res) => {
         switch(key) {
             case 'status': 
                 await Task.updateMany({
-                    _id: {$in: ids}
+                    _id: {$in: ids},
+                    createdBy: req.user.id
                 }, {
                     status: value
                 });
@@ -112,7 +116,8 @@ module.exports.changeMulti = async (req, res) => {
 
             case 'deleted':
                 await Task.updateMany({
-                    _id: {$in : ids}
+                    _id: {$in : ids},
+                    createdBy: req.user.id
                 }, {
                     deleted: true,
                     deletedAt: new Date()
@@ -142,6 +147,7 @@ module.exports.changeMulti = async (req, res) => {
 // [POST] /api/v1/tasks/create
 module.exports.create = async (req, res) => {
     try {
+        req.body.createdBy = req.user.id;
         const task = new Task(req.body);
         await task.save();
         res.json({
@@ -162,7 +168,10 @@ module.exports.create = async (req, res) => {
 module.exports.edit = async (req, res) => {
     const id = req.params.id;
     try {
-        await Task.updateOne({_id: id}, req.body);
+        await Task.updateOne({
+            _id: id,
+            createdBy: req.user.id
+        }, req.body);
 
         res.json({
             code: 200,
