@@ -8,7 +8,10 @@ const searchHelper = require('./../../../helpers/search.helper');
 module.exports.index = async (req, res) => {
     const objectFilter = {
         deleted: false,
-        createdBy: req.user.id
+        $or: [
+            {createdBy: req.user.id},
+            {taskUserList: req.user.id}
+        ]
     } 
 
     if(req.query.status) {
@@ -149,7 +152,7 @@ module.exports.create = async (req, res) => {
     try {
         let listIdUser = await User.find({}).select('_id');
         listIdUser = listIdUser.map(item => item._id.toString());
-        let set = new Set([...listIdUser]);
+        let set = new Set(listIdUser);
         
         if(req.body.taskUserList) {
             for(let idUser of req.body.taskUserList) {
@@ -169,7 +172,7 @@ module.exports.create = async (req, res) => {
         res.json({
             code: 200,
             message: "OK",
-            data: task
+            data: task,
         });
     }
     catch(err) {
