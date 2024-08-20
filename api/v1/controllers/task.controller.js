@@ -147,6 +147,22 @@ module.exports.changeMulti = async (req, res) => {
 // [POST] /api/v1/tasks/create
 module.exports.create = async (req, res) => {
     try {
+        let listIdUser = await User.find({}).select('_id');
+        listIdUser = listIdUser.map(item => item._id.toString());
+        let set = new Set([...listIdUser]);
+        
+        if(req.body.taskUserList) {
+            for(let idUser of req.body.taskUserList) {
+                if(!set.has(idUser)) {
+                    res.json({
+                        code: 400,
+                        message: "User not found"
+                    });
+                    return;
+                }
+            } 
+        }
+        
         req.body.createdBy = req.user.id;
         const task = new Task(req.body);
         await task.save();
@@ -191,7 +207,10 @@ module.exports.edit = async (req, res) => {
 module.exports.delete = async (req, res) => {
     const id = req.params.id;
     try {
-        await Task.updateOne({_id: id}, {
+        await Task.updateOne({
+            _id: id,
+            createdBy: req.user.id
+        }, {
             deleted: true
         });
 
